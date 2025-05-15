@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 
+	_ "github.com/lib/pq"
 	"github.com/uLuKaiDev/Gator/internal/app"
 	"github.com/uLuKaiDev/Gator/internal/config"
+	"github.com/uLuKaiDev/Gator/internal/database"
 )
 
 func main() {
@@ -20,7 +23,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	state := &app.State{Config: &cfg}
+	dbConn, err := sql.Open("postgres", cfg.DBUrl)
+	if err != nil {
+		fmt.Printf("Error connecting to the database: %v\n", err)
+	}
+
+	dbQueries := database.New(dbConn)
+
+	state := &app.State{
+		DB:     dbQueries,
+		DBConn: dbConn,
+		Config: &cfg,
+	}
 
 	cmd := app.Command{
 		Name: os.Args[1],
@@ -29,9 +43,15 @@ func main() {
 
 	cmds := app.NewCommands()
 	cmds.Register("login", app.HandlerLogin)
+	cmds.Register("register", app.HandlerRegister)
+	cmds.Register("db-reset", app.HandlerDBReset)
+	cmds.Register("reset", app.HandlerDeleteUsers)
+	cmds.Register("users", app.HandlerGetUsers)
+	cmds.Register("agg", app.HandlerAgg)
 
 	if err := cmds.Run(state, cmd); err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
+
 }
