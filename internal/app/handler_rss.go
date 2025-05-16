@@ -7,6 +7,10 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/uLuKaiDev/Gator/internal/database"
 )
 
 type RSSFeed struct {
@@ -71,5 +75,62 @@ func HandlerAgg(s *State, cmd Command) error {
 	}
 
 	fmt.Printf("Fetched feed: %+v\n", feed)
+	return nil
+}
+
+func HandlerAddFeed(s *State, cmd Command) error {
+	if len(cmd.Args) < 2 {
+		return fmt.Errorf("missing arguments, usage: gator addfeed <name> <feed_url>")
+	}
+
+	if s.Config.CurrentUserName == "" {
+		return fmt.Errorf("user not set, please set a user first")
+	}
+
+	feedName := cmd.Args[0]
+	feedURL := cmd.Args[1]
+
+	_, err := fetchFeed(context.Background(), feedURL)
+	if err != nil {
+		return fmt.Errorf("failed to fetch feed: %w", err)
+	}
+
+	user, err := s.DB.GetUser(context.Background(), s.Config.CurrentUserName)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	id := uuid.New()
+	now := time.Now()
+
+	feedID, err := s.DB.CreateFeed(context.Background(), database.CreateFeedParams{
+		ID:        id,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Name:      feedName,
+		Url:       feedURL,
+		UserID:    user.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create feed: %w", err)
+	}
+	fmt.Printf("feed created: %v\n", feedID)
+	return nil
+}
+
+func HandlerListFeeds(s *State, cmd Command) error {
+	if s.Config.CurrentUserName == "" {
+		return fmt.Errorf("user not set, please register a user first")
+	}
+
+	feeds, err := s.DB.GetFeedsWithUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get feeds with users: %w", err)
+	}
+
+	fmt.Printf("Feeds stored in the database:\n")
+	for _, feed := range feeds {
+		fmt.Printf("Name: %s, URL: %s, User: %s\n", feed.FeedName, feed.FeedUrl, feed.UserName)
+	}
 	return nil
 }
