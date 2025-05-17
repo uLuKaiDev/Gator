@@ -48,8 +48,10 @@ func main() {
 	cmds.Register("reset", app.HandlerDeleteUsers)
 	cmds.Register("users", app.HandlerGetUsers)
 	cmds.Register("agg", app.HandlerAgg)
-	cmds.Register("addfeed", app.HandlerAddFeed)
 	cmds.Register("feeds", app.HandlerListFeeds)
+	cmds.Register("addfeed", app.MiddlewareLoggedIn(app.HandlerAddFeed))
+	cmds.Register("follow", app.MiddlewareLoggedIn(app.HandlerFollow))
+	cmds.Register("following", app.MiddlewareLoggedIn(app.HandlerFollowing))
 
 	if err := cmds.Run(state, cmd); err != nil {
 		fmt.Println("Error:", err)
