@@ -69,13 +69,23 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 }
 
 func HandlerAgg(s *State, cmd Command) error {
-	feed, err := fetchFeed(context.Background(), RSSFeedUrl)
-	if err != nil {
-		return fmt.Errorf("failed to fetch feed: %w", err)
+	if len(cmd.Args) < 1 {
+		return fmt.Errorf("usage: gator agg <time_between_requests>")
 	}
 
-	fmt.Printf("Fetched feed: %+v\n", feed)
-	return nil
+	duration, err := time.ParseDuration(cmd.Args[0])
+	if err != nil {
+		return fmt.Errorf("invalid duration: %w", err)
+	}
+
+	fmt.Printf("Fetching feeds every %s...\n", duration)
+	ticker := time.NewTicker(duration)
+	defer ticker.Stop()
+
+	for {
+		scrapeFeeds(s)
+		<-ticker.C
+	}
 }
 
 func HandlerAddFeed(s *State, cmd Command, user database.User) error {
@@ -183,5 +193,23 @@ func HandlerFollowing(s *State, cmd Command, user database.User) error {
 	for _, follow := range follows {
 		fmt.Println("-", follow.FeedName)
 	}
+	return nil
+}
+
+func HandlerUnfollow(s *State, cmd Command, user database.User) error {
+	if len(cmd.Args) != 1 {
+		return fmt.Errorf("usage: gator unfollow <feed_url>")
+	}
+	feedURL := cmd.Args[0]
+
+	err := s.DB.DeleteFeedFollowByUserAndFeedUrl(context.Background(), database.DeleteFeedFollowByUserAndFeedUrlParams{
+		UserID: user.ID,
+		Url:    feedURL,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to unfollow feed: %w", err)
+	}
+
+	fmt.Printf("User %s has unfollowed feed %s\n", user.Name, feedURL)
 	return nil
 }

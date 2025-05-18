@@ -42,16 +42,18 @@ func main() {
 	}
 
 	cmds := app.NewCommands()
-	cmds.Register("login", app.HandlerLogin)
 	cmds.Register("register", app.HandlerRegister)
-	cmds.Register("db-reset", app.HandlerDBReset)
+	cmds.Register("login", app.HandlerLogin)
 	cmds.Register("reset", app.HandlerDeleteUsers)
+	cmds.Register("db-reset", app.HandlerDBReset)
 	cmds.Register("users", app.HandlerGetUsers)
 	cmds.Register("agg", app.HandlerAgg)
-	cmds.Register("feeds", app.HandlerListFeeds)
 	cmds.Register("addfeed", app.MiddlewareLoggedIn(app.HandlerAddFeed))
+	cmds.Register("feeds", app.HandlerListFeeds)
 	cmds.Register("follow", app.MiddlewareLoggedIn(app.HandlerFollow))
 	cmds.Register("following", app.MiddlewareLoggedIn(app.HandlerFollowing))
+	cmds.Register("unfollow", app.MiddlewareLoggedIn(app.HandlerUnfollow))
+	cmds.Register("browse", app.MiddlewareLoggedIn(app.HandlerBrowse))
 
 	if err := cmds.Run(state, cmd); err != nil {
 		fmt.Println("Error:", err)
