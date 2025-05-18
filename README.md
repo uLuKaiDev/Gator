@@ -4,56 +4,74 @@ Gator is a command-line RSS reader written in Go. It allows users to register, l
 
 ---
 
-## Features
+## Prerequisites
 
-* User registration & login
-* Reset & delete user accounts
-* Add & list RSS feeds
-* Follow/unfollow feeds
-* Browse latest posts from followed feeds
-* Background feed aggregation (polls feeds at intervals)
+Before using Gator, you’ll need:
 
----
+* **Go** (1.20 or later): [Install Go](https://golang.org/dl/)
+* **PostgreSQL**: You’ll need a running Postgres database (e.g. via Docker or local install)
+* **`goose`**: Used for running database migrations — install with:
 
-## Project Structure
-
-```
-~/
-├── main.go                  # CLI entrypoint
-├── .gitignore
-├── go.mod / go.sum          # Go module files
-├── readme.md
-├── sqlc.yaml                # SQLC config
-├── internal/
-│   ├── app/                 # Handlers and command registrations
-│   ├── config/              # App configuration logic
-│   └── database/            # SQLC generated database code
-├── sql/
-│   ├── queries/             # SQL queries consumed by SQLC
-│   └── schema/              # Goose-compatible DB migrations
+```sh
+go install github.com/pressly/goose/v3/cmd/goose@latest
 ```
 
 ---
 
-## Database Schema Overview
+## Installation
 
-### `users`
+To install the `gator` CLI globally:
 
-* `id`, `created_at`, `updated_at`, `name`, `email`, `password_hash`
+```sh
+go install github.com/yourusername/gator@latest
+```
 
-### `feeds`
+Make sure your `$GOPATH/bin` is in your `$PATH` so you can run `gator` from anywhere.
 
-* `id`, `created_at`, `updated_at`, `name`, `url`, `user_id`
+---
 
-### `feed_follows`
+## Configuration
 
-* `id`, `created_at`, `updated_at`, `user_id`, `feed_id`
+Before running the app, create a config file at:
 
-### `posts`
+```
+./config/config.json
+```
 
-* `id`, `created_at`, `updated_at`, `title`, `url`, `description`, `published_at`, `feed_id`
+Example contents:
 
-> Post uniqueness is enforced via `feed_id + url`.
+```json
+{
+  "db_url": "postgres://postgres:password@localhost:5432/gator?sslmode=disable",
+  "current_user_name": "ulukai"
+}
+```
+
+Then run database migrations:
+
+```sh
+goose -dir ./sql/schema postgres "your-db-url" up
+```
+
+Replace `"your-db-url"` with your actual Postgres connection string.
+
+---
+
+## Running the Program
+
+For development:
+
+```sh
+go run .
+```
+
+For production (after `go install`):
+
+```sh
+gator browse
+```
+
+Note: The `agg` command blocks the terminal as it polls feeds — open a second tab to test other commands.
 
 ---
 
@@ -74,56 +92,63 @@ Gator is a command-line RSS reader written in Go. It allows users to register, l
 | `unfollow`   | Unfollow a feed                              |
 | `browse [n]` | Browse most recent `n` posts (default 10)    |
 
-> Commands that require a user session are protected by middleware.
-
 ---
 
-## Time Display
-
-Timestamps are stored in full ISO8601 format (UTC with timezone info), but in the CLI they're rendered using a custom `humanizeTime()` function that converts time to relative strings:
+## Output Example
 
 ```text
 Feed: Boot.dev Blog
 Title: Learn Go with CLI Projects
-URL: <url will be here, available with cmd+click>
+URL: https://example.com/post
 Published At: 7 days ago
+```
+
+> Time is rendered using a custom `humanizeTime()` function.
+
+---
+
+## Project Structure
+
+```
+~/
+├── main.go                  # CLI entrypoint
+├── .gitignore
+├── go.mod / go.sum
+├── readme.md
+├── sqlc.yaml
+├── internal/
+│   ├── app/                 # Handlers and command registrations
+│   ├── config/              # App configuration logic
+│   └── database/            # SQLC generated code
+├── sql/
+│   ├── queries/             # SQL queries used by SQLC
+│   └── schema/              # DB migrations (Goose)
 ```
 
 ---
 
-## Development Takeaways
+## Tips & Notes
 
-* Use `sqlc generate` to regenerate Go code after editing SQL queries.
-* Place all `.sql` files for queries in `sql/queries/`.
-* Use `-- name:` comments in SQL files to define generated method names.
-* Keep `posts.published_at` in UTC to allow consistent sorting.
-* Feed aggregation errors like duplicates are expected and logged but not fatal.
+* Use `sqlc generate` after editing SQL files in `sql/queries/`
+* `published_at` timestamps are stored in full UTC format
+* Duplicate post insertions (same feed\_id + url) are ignored
 
 ---
 
-## Additional Information
+## Future Enhancements / Will-never-look-at-this-again 
 
-* Since `agg` blocks the terminal (runs a loop), open a second terminal tab for testing other commands.
-* Add more feeds to better test the `browse` command.
-* The `browse` query was extended to join the `feeds` table so that each post shows the `feed_name`.
-
----
-
-## Possible Future Enhancements
-
-* [ ] Add post "read" tracking
-* [ ] Feed deletion and editing
+* [ ] Track post read/unread state
+* [ ] Feed management (rename/delete)
+* [ ] Unit tests for core logic
 
 ---
 
 ## Credits
 
-Built by \[uLuKaiDev], using:
+Built by \[uLuKaiDev], powered by:
 
 * Go
-* SQLC
 * PostgreSQL
-* Goose for migrations
-* Boot.dev course 
-
----
+* SQLC
+* Goose
+* Boot.dev Go course
